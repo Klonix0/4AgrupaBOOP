@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 
 class Ucenik:
     def __init__(self,ime,prezime,razred):
@@ -61,10 +62,12 @@ class EvidencijaApp:
         self.razred_entry.grid(row=2, column=1, padx=5, pady=5, sticky="EW")
 
         # Gumbi
-        self.dodaj_gumb = tk.Button(unos_frame, text="Dodaj učenika")
+        self.dodaj_gumb = tk.Button(unos_frame, text="Dodaj učenika", command=self.dodaj_ucenika)
         self.dodaj_gumb.grid(row=3, column=0, padx=5, pady=10)
-        self.spremi_gumb = tk.Button(unos_frame, text="Spremi izmjene")
+        self.spremi_gumb = tk.Button(unos_frame, text="Spremi izmjene", command=self.spremi_izmjene)
         self.spremi_gumb.grid(row=3, column=1, padx=5, pady=10, sticky="W")
+        self.spremi_gumb = tk.Button(unos_frame, text="Obriši učenika", command=self.obrisi_ucenika)
+        self.spremi_gumb.grid(row=3, column=2, padx=5, pady=10, sticky="W")
 
         # --- Widgeti za prikaz (NOVO GRADIVO: Listbox) ---
         self.listbox = tk.Listbox(prikaz_frame)
@@ -77,28 +80,86 @@ class EvidencijaApp:
 
         # Povezivanje događaja odabira s našom metodom
         self.listbox.bind('<<ListboxSelect>>', self.odaberi_ucenika)
+
+        self.info_label = tk.Label(prikaz_frame, anchor="w")
+        self.info_label.grid(row=1, column=0, columnspan=2, sticky="EW", pady=(8,0))
         
 
     def dodaj_ucenika(self):
+        ime = self.ime_entry.get().strip()
+        prezime = self.prezime_entry.get().strip()
+        razred = self.razred_entry.get().strip()
+
+        if not (ime and prezime and razred):
+            return
+        self.ucenici.append(Ucenik(ime, prezime, razred))
+        self.osvjezi_listu()
+        self.ocisti_polja()
+
+        
+    def osvjezi_listu(self):
         # Brisanje postojećih stavki
         self.listbox.delete(0, tk.END)
         # Dodavanje novih stavki
-        for Ucenik in self.ucenici:
-            self.listbox.insert(tk.END, Ucenik)
+        for u in self.ucenici:
+            self.listbox.insert(tk.END, str(u))
 
-        self.osvjezi_listu()
 
-    def odabrani_ucenik_index(self, event):
+    def odaberi_ucenika(self, event):
         # Dohvaćanje indeksa odabrane stavke
-        odabrani_indeksi = self.listbox.curselection()
-        if not odabrani_indeksi: # Ako ništa nije odabrano, izađi
+        odabrani_ucenik_index = self.listbox.curselection()
+        if not odabrani_ucenik_index: # Ako ništa nije odabrano, izađi
             return
         
-        odabrani_index = odabrani_indeksi[0]
-        odabrani_ucenik = self.ucenici[odabrani_index]
+        odabrani_ucenik_index = odabrani_ucenik_index[0]
+        self.odabrani_ucenik_index = odabrani_ucenik_index
+        Ucenik = self.ucenici[odabrani_ucenik_index]
+
+        u=self.ucenici[odabrani_ucenik_index]
+        self.ime_entry.delete(0, tk.END)
+        self.ime_entry.insert(0, u.ime)
+        self.prezime_entry.delete(0, tk.END)
+        self.prezime_entry.insert(0, u.prezime)
+        self.razred_entry.delete(0, tk.END)
+        self.razred_entry.insert(0, u.razred)
         
         # Prikaz informacije o odabranom artiklu
-        self.info_label.config(text=f"Odabrali ste: {odabrani_artikl}")
+        self.info_label.config(text=f"Odabrali ste: {u}")
+        
+
+    def spremi_izmjene(self):
+        if self.odabrani_ucenik_index is None:
+            return
+        ime = self.ime_entry.get().strip()
+        prezime = self.prezime_entry.get().strip()
+        razred = self.razred_entry.get().strip()
+        if not (ime and prezime and razred):
+            return
+        u = self.ucenici[self.odabrani_ucenik_index]
+        u.ime, u.prezime, u.razred = ime, prezime, razred
+        self.osvjezi_listu()
+        self.ocisti_polja()
+        self.info_label.config(text="Izmjene su spremljene.")
+        self.odabrani_ucenik_index= None
+
+    def obrisi_ucenika(self):
+        odabrani_ucenik_index=self.listbox.curselection()
+        if not odabrani_ucenik_index:
+            messagebox.showinfo("Info", "Najprije odaberi učenika iz liste.")
+            return
+        idx = odabrani_ucenik_index[0]
+        potvrda = messagebox.askyesno("Potvrda brisanja", "Želiš li obrisati odabranog učenika?")
+        if potvrda:
+            del self.ucenici[idx]
+            self.osvjezi_listu()
+            self.ocisti_polja()
+            self.odabrani_ucenik_index= None
+
+    def ocisti_polja(self):
+        self.ime_entry.delete(0, tk.END)
+        self.prezime_entry.delete(0, tk.END)
+        self.razred_entry.delete(0, tk.END)
+
 
 # Pokretanje primjera
 if __name__ == "__main__":
