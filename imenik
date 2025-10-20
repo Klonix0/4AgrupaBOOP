@@ -1,0 +1,155 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import csv
+from dataclasses import dataclass
+
+
+@dataclass
+class Kontakt:
+    ime: str
+    email: str
+    telefon: str
+
+    def __str__(self) -> str:
+        return f"{self.ime} | {self.email} | {self.telefon}"
+
+
+class ImenikApp:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        self.root.title("Jednostavni digitalni imenik")
+        self.kontakti: list[Kontakt] = []
+
+        # --- Gornji dio: forma za unos ---
+        unos_frame = ttk.Frame(root, padding=10)
+        unos_frame.grid(row=0, column=0, sticky="ew")
+        unos_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(unos_frame, text="Ime i prezime:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.ime_entry = ttk.Entry(unos_frame)
+        self.ime_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        ttk.Label(unos_frame, text="Email:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.email_entry = ttk.Entry(unos_frame)
+        self.email_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        ttk.Label(unos_frame, text="Telefon:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.tel_entry = ttk.Entry(unos_frame)
+        self.tel_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+
+        ttk.Button(unos_frame, text="Dodaj kontakt", command=self.dodaj_kontakt)\
+            .grid(row=3, column=0, columnspan=2, pady=(8, 0), sticky="ew")
+
+        # --- Srednji dio: lista + scrollbar ---
+        lista_frame = ttk.Frame(root, padding=(10, 0, 10, 10))
+        lista_frame.grid(row=1, column=0, sticky="nsew")
+        lista_frame.rowconfigure(0, weight=1)
+        lista_frame.columnconfigure(0, weight=1)
+
+        self.listbox = tk.Listbox(lista_frame, height=12)
+        self.listbox.grid(row=0, column=0, sticky="nsew")
+
+        scrollbar = ttk.Scrollbar(lista_frame, orient="vertical", command=self.listbox.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.listbox.config(yscrollcommand=scrollbar.set)
+
+        # Info selekcija
+        self.info_label = ttk.Label(lista_frame, text="Odaberite kontakt za detalje…", anchor="w")
+        self.info_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+
+        # gumbi
+        gumbi_frame = ttk.Frame(root, padding=10)
+        gumbi_frame.grid(row=2, column=0, sticky="ew")
+        for i in range(3):
+            gumbi_frame.columnconfigure(i, weight=1)
+
+        ttk.Button(gumbi_frame, text="Spremi u CSV", command=self.spremi_csv)\
+            .grid(row=0, column=0, padx=4, sticky="ew")
+        ttk.Button(gumbi_frame, text="Učitaj iz CSV", command=self.ucitaj_csv)\
+            .grid(row=0, column=1, padx=4, sticky="ew")
+        ttk.Button(gumbi_frame, text="Obriši odabrani", command=self.obrisi_odabranog)\
+            .grid(row=0, column=2, padx=4, sticky="ew")
+
+        # Layout responsivenes
+        root.rowconfigure(1, weight=1)
+        root.columnconfigure(0, weight=1)
+
+        # Ponašanja
+        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+        self.tel_entry.bind("<Return>", lambda e: self.dodaj_kontakt())
+
+        self.ucitaj_csv()
+
+
+    def dodaj_kontakt(self):
+        ime = self.ime_entry.get().strip()
+        email = self.email_entry.get().strip()
+        tel = self.tel_entry.get().strip()
+
+        if not (ime and email and tel):
+            messagebox.showwarning("Nedostaju podaci", "Unesite ime, email i telefon.")
+            return
+
+        k = Kontakt(ime, email, tel)
+        self.kontakti.append(k)
+        self.listbox.insert(tk.END, str(k))
+
+        self.ime_entry.delete(0, tk.END)
+        self.email_entry.delete(0, tk.END)
+        self.tel_entry.delete(0, tk.END)
+        self.ime_entry.focus_set()
+
+    def obrisi_odabranog(self):
+        sel = self.listbox.curselection()
+        if not sel:
+            messagebox.showwarning("Nije odabrano", "Odaberite kontakt koji želite obrisati.")
+            return
+        idx = sel[0]
+        if 0 <= idx < len(self.kontakti):
+            self.kontakti.pop(idx)
+        self.listbox.delete(idx)
+        self.info_label.config(text="Kontakt obrisan.")
+
+    def spremi_csv(self):
+        try:
+            with open("kontakti.csv", "w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                for k in self.kontakti:
+                    w.writerow([k.ime, k.email, k.telefon])
+            messagebox.showinfo("Spašeno", "Kontakti su spremljeni u kontakti.csv")
+        except OSError as e:
+            messagebox.showerror("Greška pri spremanju", str(e))
+
+    def ucitaj_csv(self):
+        try:
+            with open("kontakti.csv", "r", encoding="utf-8") as f:
+                r = csv.reader(f)
+                self.kontakti.clear()
+                self.listbox.delete(0, tk.END)
+                for row in r:
+                    if len(row) >= 3:
+                        k = Kontakt(row[0], row[1], row[2])
+                        self.kontakti.append(k)
+                        self.listbox.insert(tk.END, str(k))
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            messagebox.showerror("Greška pri učitavanju", str(e))
+
+    def _on_select(self, _event=None):
+        sel = self.listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        try:
+            k = self.kontakti[idx]
+            self.info_label.config(text=f"Odabrali ste: {k.ime} – {k.email}, {k.telefon}")
+        except IndexError:
+            self.info_label.config(text="")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ImenikApp(root)
+    root.minsize(520, 440)
+    root.mainloop()
