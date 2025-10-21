@@ -38,7 +38,7 @@ class ImenikApp:
         gumbi_frame = tk.Frame(self.root, padx=10, pady=10)
         gumbi_frame.grid(row=2, column=0, sticky="EW")
 
-        tk.Label(unos_frame, text="Ime i prezime:").grid(row=0, column=0, padx=5, pady=5, sticky="W")
+        tk.Label(unos_frame, text="Ime:").grid(row=0, column=0, padx=5, pady=5, sticky="W")
         self.ime_entry = tk.Entry(unos_frame)
         self.ime_entry.grid(row=0, column=1, padx=5, pady=5, sticky="EW")
 
@@ -73,6 +73,18 @@ class ImenikApp:
         if not (ime and email and telefon):
             messagebox.showwarning("Upozorenje", "Popuni sva tri polja (ime, email, telefon).")
             return
+        if len(ime) < 3:
+            messagebox.showwarning("Upozorenje", "Ime mora imati 3 ili više znakova")
+            return
+
+        if len(telefon) != 9 and len(telefon) != 10:
+            messagebox.showwarning("Upozorenje", "Telefonski broj mora imati 9 ili 10 znakova")
+            return
+
+        if '@' not in email or not email.endswith('.com'):
+            messagebox.showwarning("Upozorenje", "Email mora sadržavati znak @ i završavati se sa .com")
+            return
+
 
         k = Kontakt(ime, email, telefon)
         self.kontakti.append(k)
